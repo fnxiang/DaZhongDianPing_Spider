@@ -1,11 +1,13 @@
-# 大众点评信息爬取
+# 大众点评商家店铺评论信息爬取
 
-### 声明：博客内容不得用于商业用途，仅做学习交流，如果侵犯了您的利益和权益,请邮箱联系我，我将删除该项目。
+### 声明：
 
-`woff2tff.py` 该文件来自于https://github.com/hanikesn/woff2otf
+**项目基于 naiveliberty/DaZhongDianPing 改进，仅作为学习参考，不得用于商业用途。**
+`dzdp_css_map_V1.1.py`等 文件来自于 https://github.com/naiveliberty/DaZhongDianPing
 
 ------
 
+## 以下为原作者1.1版本相关信息
 ### 版本更新：
 
 #### 2020-5-8
@@ -22,6 +24,29 @@
 | ------- | -------------------- |
 | liberty | fthemuse@foxmail.com |
 
+##	1.2版本信息
+
+### 改进
+
+#### 2021-4-8
+
+- 过滤address_font_map与words_dc  KeyError问题
+- 新增div[@class="review-words"]`的评论获取(用户与评论信息可能不匹配问题)
+- 可直接输出至CSV文件
+- 解决Mac打开CSV文件乱码问题
+- 增加简单的断点续传问题
+- 新增``dzdp_css_map_V1.2.py``
+- 新增爬取商家所有评论信息**
+
+### ⚠️注意
+
+- 需自行添加cookies
+- 页面爬取信息注意间隔
+- 如遇到`self.max_pages`数组越界，请尝试刷新页面手动验证
+
+| 作者    | 邮箱                 |
+| ------- | -------------------- |
+| fring | fnxiang@bjtu.edu.cn |
 
 
 ## 环境依赖

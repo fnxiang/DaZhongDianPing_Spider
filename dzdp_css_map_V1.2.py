@@ -216,6 +216,10 @@ class DaZhongDianPing():
         # 获取用户评论
         user_review = xhtml.xpath('//div[@class="review-words Hide"]')
         user_review_not_hide = xhtml.xpath('//div[@class="review-words"]')
+
+        # 获取用户评论时间
+        # comment_time = xhtml.xpath('//span[@class="time"]')
+
         review_list = [i.xpath('string(.)').replace(' ', '').replace('⃣', '.').replace('\n', '').replace('收起评价', '') for
                        i in user_review]
         review_list_not_hide = [i.xpath('string(.)').replace(' ', '').replace('⃣', '.').replace('\n', '').replace('收起评价', '').replace('\t', '').replace('[\'', '').replace('\']', '') for
@@ -236,38 +240,23 @@ class DaZhongDianPing():
                 writer.writerow([user_name[j], review_list[j]])
                 count = count+1;
             with open("continue.log", "w") as file:
-                file.write(count)
+                file.write(str(count+1))
 
     def run(self):
-        with open("continue.log", "r") as file:
-            flag = file.readline()
-        if int(flag) == 0:
+        self.get_svg_html()
+        self.get_max_pages()
+        self.get_font_map()
+        self.get_shop_info()
+        self.get_user_info()
+        url = self.url;
+        for i in range(0, self.max_pages+1):
+            time.sleep(7)
+            self.url = url+"/p"+str(i)
             self.get_svg_html()
-            self.get_max_pages()
             self.get_font_map()
             self.get_shop_info()
             self.get_user_info()
-            url = self.url;
-            for i in range(0, self.max_pages+1):
-                time.sleep(7)
-                self.url = url+"/p"+str(i)
-                self.get_svg_html()
-                self.get_font_map()
-                self.get_shop_info()
-                self.get_user_info()
-        else:
-            url = self.url;
-            self.get_svg_html()
-            self.get_max_pages()
-            for i in range(int(flag)+1, self.max_pages+1):
-                time.sleep(7)
-                self.url = url+"/p"+str(i)
-                self.get_svg_html()
-                self.get_font_map()
-                self.get_shop_info()
-                self.get_user_info()
-        with open("continue.log", "w") as file:
-            file.write(0)
+
 
 if __name__ == '__main__':
     url = "http://www.dianping.com/shop/issxn96WYmSEbdJv"

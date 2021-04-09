@@ -2,11 +2,11 @@ import requests
 import re
 import time
 from lxml import etree
-import random
+import progressbar
 import csv
 
 class DaZhongDianPing():
-    def __init__(self, url, csv_name):
+    def __init__(self, url, csv_name, continue_flag):
         self.url = url + "/review_all"
         # 输出文件
         self.csv_name = csv_name
@@ -24,6 +24,8 @@ class DaZhongDianPing():
         self.review_svg = None
         # 记录csv文件写入
         self.write_flag = False
+        # 断点续传标志位
+        self.continue_flag = int(continue_flag)
 
         # 字体码表，key 为 class 名称，value 为对应的汉字
         self.address_font_map = dict()
@@ -43,7 +45,7 @@ class DaZhongDianPing():
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
             'Referer': self.referer,
             'Accept-Language': 'zh-CN,zh;q=0.9',
-            'Cookie': 'Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1617856942; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1617856083; _lxsdk_s=178afbcb3ff-3d1-bc0-a58%7C%7C564; s_ViewType=10; ctu=e5076001f755d904667123b8be8cee8faa9c7bbada359dff6c94d43cb0796491; cy=2; cye=beijing; dper=8d717ffecfdbe496e0634b9f7596221e92a8bdeb8ec4cf2a0b93577e28ca30b0357318c2ccb37f6c3827d937e4f6e179826a2deec8c0cd01238abc7a652f9b28b3f9efcd9856f47cb90bb6d0b393c17fa872fda36741c6c18544fb1a06bc2452; dplet=92cab7e909546170543a80882bbdabca; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_0547868996; _hc.v=c4064581-534b-a7f0-33e8-f6abfd867542.1617856083; _lx_utm=utm_source%3Dgoogle%26utm_medium%3Dorganic; _lxsdk=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; _lxsdk_cuid=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; fspop=test'
+            'Cookie': '_lxsdk_s=178b67b3713-865-603-250%7C%7C184; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1617969262; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1617856083; s_ViewType=10; cy=2; cye=beijing; ctu=e5076001f755d904667123b8be8cee8faa9c7bbada359dff6c94d43cb0796491; dper=8d717ffecfdbe496e0634b9f7596221e92a8bdeb8ec4cf2a0b93577e28ca30b0357318c2ccb37f6c3827d937e4f6e179826a2deec8c0cd01238abc7a652f9b28b3f9efcd9856f47cb90bb6d0b393c17fa872fda36741c6c18544fb1a06bc2452; dplet=92cab7e909546170543a80882bbdabca; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_0547868996; _hc.v=c4064581-534b-a7f0-33e8-f6abfd867542.1617856083; _lx_utm=utm_source%3Dgoogle%26utm_medium%3Dorganic; _lxsdk=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; _lxsdk_cuid=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; fspop=test'
         }
 
     def get_max_pages(self):
@@ -153,7 +155,6 @@ class DaZhongDianPing():
             tmp_dc[prefix + cname] = tmp
         return tmp_dc
 
-
     def address_class_to_font(self, class_list, y_list, words_dc, prefix):
         tmp_dc = dict()
         # 核心算法，将 css 转换为对应的字符
@@ -199,7 +200,6 @@ class DaZhongDianPing():
 
         print(f'地址：{shop_address}\n电话：{shop_tell}')
 
-
     def get_user_info(self):
         # 将 self.html 评论区域加密的 class 样式替换成对应的中文字符
         review_class_set = re.findall('<svgmtsi class="(.*?)"></svgmtsi>', self.html, re.S)
@@ -218,7 +218,9 @@ class DaZhongDianPing():
         user_review_not_hide = xhtml.xpath('//div[@class="review-words"]')
 
         # 获取用户评论时间
-        # comment_time = xhtml.xpath('//span[@class="time"]')
+        comment_time = xhtml.xpath('//span[@class="time"]')
+        comment_list = [i.xpath('string(.)').replace(' ', '').replace('⃣', '.').replace('\n', '').replace('收起评价', '') for
+                       i in comment_time]
 
         review_list = [i.xpath('string(.)').replace(' ', '').replace('⃣', '.').replace('\n', '').replace('收起评价', '') for
                        i in user_review]
@@ -226,30 +228,34 @@ class DaZhongDianPing():
                        i in user_review_not_hide]
         for comment in review_list_not_hide:
             review_list.append(comment);
-        print(len(user_name), len(review_list))
+        print(len(user_name), len(review_list), len(comment_time))
         for i in review_list:
             print(i)
             print('-------------------------------------')
-        count = 1;
+
         with open(self.csv_name, "a+", encoding='utf-8-sig') as csvfile:
             writer = csv.writer(csvfile)
             if self.write_flag is False:
-                writer.writerow(["用户名", "评论"])
+                writer.writerow(["用户名", "评论", "评论时间"])
                 self.write_flag = True
             for j in range(0, len(review_list)):
-                writer.writerow([user_name[j], review_list[j]])
-                count = count+1;
-            with open("continue.log", "w") as file:
-                file.write(str(count+1))
+                writer.writerow([user_name[j], review_list[j], comment_list[j][0:10]])
+            self.continue_flag += 1
+            with open("continue.log", "w") as log:
+                log.write(str(self.continue_flag))
 
     def run(self):
         self.get_svg_html()
         self.get_max_pages()
-        self.get_font_map()
-        self.get_shop_info()
-        self.get_user_info()
-        url = self.url;
-        for i in range(0, self.max_pages+1):
+        if self.continue_flag is 0:
+            self.get_font_map()
+            self.get_shop_info()
+            self.get_user_info()
+            self.continue_flag = 2
+        else:
+            self.write_flag = True
+        url = self.url
+        for i in range(self.continue_flag, self.max_pages+1):
             time.sleep(7)
             self.url = url+"/p"+str(i)
             self.get_svg_html()
@@ -259,7 +265,12 @@ class DaZhongDianPing():
 
 
 if __name__ == '__main__':
-    url = "http://www.dianping.com/shop/issxn96WYmSEbdJv"
-    csv_name = "shiqiaoshidi.csv"
-    dz = DaZhongDianPing(url, csv_name)
-    dz.run()
+    with open("continue.log", "r+") as file:
+        flag = file.read()
+        url = "http://www.dianping.com/shop/kaPnurpM2kPdTPMH"
+        csv_name = "杏花草莓采摘园.csv"
+        dz = DaZhongDianPing(url, csv_name, flag)
+        dz.run()
+        file.truncate()
+    with open("continue.log", "w") as file:
+        file.write("0")

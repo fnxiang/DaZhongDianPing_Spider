@@ -267,8 +267,8 @@ class DaZhongDianPing():
 if __name__ == '__main__':
     with open("continue.log", "r+") as file:
         flag = file.read()
-        url = "http://www.dianping.com/shop/kaPnurpM2kPdTPMH"
-        csv_name = "杏花草莓采摘园.csv"
+        url = "http://www.dianping.com/shop/l1IngPrvOP6Uyn6N"
+        csv_name = "庞各庄西瓜蔬菜采摘园·锦华瓜园.csv"
         dz = DaZhongDianPing(url, csv_name, flag)
         dz.run()
         file.truncate()

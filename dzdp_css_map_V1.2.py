@@ -6,7 +6,7 @@ import progressbar
 import csv
 
 class DaZhongDianPing():
-    def __init__(self, url, csv_name, continue_flag):
+    def __init__(self, url, csv_name, continue_flag, cookies):
         self.url = url + "/review_all"
         # 输出文件
         self.csv_name = csv_name
@@ -45,13 +45,17 @@ class DaZhongDianPing():
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
             'Referer': self.referer,
             'Accept-Language': 'zh-CN,zh;q=0.9',
-            'Cookie': '_lxsdk_s=178b67b3713-865-603-250%7C%7C184; Hm_lpvt_602b80cf8079ae6591966cc70a3940e7=1617969262; Hm_lvt_602b80cf8079ae6591966cc70a3940e7=1617856083; s_ViewType=10; cy=2; cye=beijing; ctu=e5076001f755d904667123b8be8cee8faa9c7bbada359dff6c94d43cb0796491; dper=8d717ffecfdbe496e0634b9f7596221e92a8bdeb8ec4cf2a0b93577e28ca30b0357318c2ccb37f6c3827d937e4f6e179826a2deec8c0cd01238abc7a652f9b28b3f9efcd9856f47cb90bb6d0b393c17fa872fda36741c6c18544fb1a06bc2452; dplet=92cab7e909546170543a80882bbdabca; ll=7fd06e815b796be3df069dec7836c3df; ua=dpuser_0547868996; _hc.v=c4064581-534b-a7f0-33e8-f6abfd867542.1617856083; _lx_utm=utm_source%3Dgoogle%26utm_medium%3Dorganic; _lxsdk=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; _lxsdk_cuid=178afbcb3fec8-08ee321369e40d8-48183301-1aeaa0-178afbcb3fec8; fspop=test'
+            'Cookie': cookies
         }
 
     def get_max_pages(self):
         tree = etree.HTML(self.html)
         # print(tree.xpath('//div[@class="reviews-pages"]/a/text()'))
-        self.max_pages = int(tree.xpath('//div[@class="reviews-pages"]/a/text()')[-2])
+        try:
+            self.max_pages = int(tree.xpath('//div[@class="reviews-pages"]/a/text()')[-2])
+        except IndexError:
+            print("Error: 现有Cookie无法访问到该网页或页面访问受限")
+            raise IndexError
 
     def get_svg_html(self):
         # 获取商家评论页内容
@@ -93,15 +97,17 @@ class DaZhongDianPing():
         # <cc class="xxx.*?"></cc>              电话
         # <svgmtsi class="xxx.*?"></svgmtsi>    评论
         # xxx 每天都会发生变化，所以动态匹配对应的前缀
+        try:
+            result = re.search('<bb class="(.*?)"></bb>', self.html, re.S)
+            address_prefix = result.group(1)[:2]
 
-        result = re.search('<bb class="(.*?)"></bb>', self.html, re.S)
-        address_prefix = result.group(1)[:2]
+            result = re.search('<cc class="(.*?)"></cc>', self.html, re.S)
+            tell_prefix = result.group(1)[:2]
 
-        result = re.search('<cc class="(.*?)"></cc>', self.html, re.S)
-        tell_prefix = result.group(1)[:2]
-
-        result = re.search('<svgmtsi class="(.*?)"></svgmtsi>', self.html, re.S)
-        review_prefix = result.group(1)[:2]
+            result = re.search('<svgmtsi class="(.*?)"></svgmtsi>', self.html, re.S)
+            review_prefix = result.group(1)[:2]
+        except AttributeError:
+            print("Error: 未能获取到result，请重试")
 
 
         """
@@ -133,6 +139,9 @@ class DaZhongDianPing():
 
         address_result = re.findall('<textPath xlink:href="#(\d+)" textLength=".*?">(.*?)</textPath>', self.address_svg, re.S)
         tell_result = re.search('<text x="(.*?)" y=".*?">(.*?)</text>', self.tell_svg, re.S)
+        if tell_result is None:
+            print("Error: 验证失效，请尝试手动验证")
+            raise TypeError;
         tell_x_list = tell_result.group(1).split(' ')
         tell_words_str = tell_result.group(2)
 
@@ -267,9 +276,11 @@ class DaZhongDianPing():
 if __name__ == '__main__':
     with open("continue.log", "r+") as file:
         flag = file.read()
-        url = "http://www.dianping.com/shop/l1IngPrvOP6Uyn6N"
-        csv_name = "庞各庄西瓜蔬菜采摘园·锦华瓜园.csv"
-        dz = DaZhongDianPing(url, csv_name, flag)
+        cookies = '请替换成您的cookie'
+        cookies.encode("utf-8").decode("latin1")
+        url = "http://www.dianping.com/shop/l39TFN5SYCODrhN5"
+        csv_name = "1982农场.csv"
+        dz = DaZhongDianPing(url, csv_name, flag, cookies)
         dz.run()
         file.truncate()
     with open("continue.log", "w") as file:
